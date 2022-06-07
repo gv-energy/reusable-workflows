@@ -6,10 +6,9 @@ on:
       COMPONENT:
         required: true
         type: string
+    secrets:
       SERVICE_NAME:
         required: true
-        type: string
-    secrets:
       PRIVATE_NUGET_USERNAME:
         required: true
       PRIVATE_NUGET_PAT:
@@ -69,9 +68,9 @@ jobs:
         with:
           context: ./src
           push: true
-          tags: ${{ secrets.ACR_SERVER }}/${{ inputs.SERVICE_NAME }}.${{ inputs.COMPONENT }}:latest
+          tags: ${{ secrets.ACR_SERVER }}/${{ secrets.SERVICE_NAME }}.${{ inputs.COMPONENT }}:latest
           build-args: |
             COMPONENT=${{ inputs.COMPONENT }}
-            SERVICE_NAME=${{ inputs.SERVICE_NAME }}
+            SERVICE_NAME=${{ secrets.SERVICE_NAME }}
             PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
             PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
