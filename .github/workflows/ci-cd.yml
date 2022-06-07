@@ -64,6 +64,10 @@ jobs:
         uses: ASzc/change-string-case-action@v2
         with:
           string: ${{ secrets.SERVICE_NAME }}.${{ inputs.COMPONENT }}
+      - name: Set image tag
+        run: echo TAG="$(echo ${GITHUB_HEAD_REF##*/,,} | sed -r 's/[/]+/_/g')"-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+      - name: Echo image tag
+        run: echo ${{ env.TAG }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Find folder
