@@ -68,7 +68,7 @@ jobs:
         with:
           context: ./src
           push: true
-          tags: ${{ secrets.ACR_SERVER }}/${{ secrets.SERVICE_NAME }}.${{ inputs.COMPONENT }}:latest
+          tags: ${{ secrets.ACR_SERVER }}/${{ secrets.SERVICE_NAME,, }}.${{ inputs.COMPONENT,, }}:latest
           build-args: |
             COMPONENT=${{ inputs.COMPONENT }}
             SERVICE_NAME=${{ secrets.SERVICE_NAME }}
