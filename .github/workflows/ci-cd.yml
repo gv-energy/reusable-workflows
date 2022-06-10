@@ -66,6 +66,10 @@ jobs:
           string: ${{ secrets.SERVICE_NAME }}.${{ inputs.COMPONENT }}
       - name: Set image tag
         run: echo TAG="$(echo ${GITHUB_HEAD_REF##*/,,} | sed -r 's/[/]+/_/g')"-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+        if: github.event_name == 'pull_request'
+      - name: Set image tag
+        run: echo TAG="$(echo ${GITHUB_REF,,} | sed -e 's#refs/heads/##g')"-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+        if: github.event_name != 'pull_request'
       - name: Echo image tag
         run: echo ${{ env.TAG }}
       - name: Set up Docker Buildx
