@@ -1,0 +1,43 @@
+name: Test web
+
+on:
+  workflow_call:
+    secrets:
+      PRIVATE_NUGET_USERNAME:
+        required: true
+      PRIVATE_NUGET_PAT:
+        required: true
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    env:
+      PRIVATE_NUGET_USERNAME: ${{ secrets.PRIVATE_NUGET_USERNAME }}
+      PRIVATE_NUGET_PAT: ${{ secrets.PRIVATE_NUGET_PAT }}
+    defaults:
+      run:
+        working-directory: ./src
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET 6.x
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '6.x'
+      - uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          # Look to see if there is a cache hit for the corresponding requirements file
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget
+      - name: Run unit tests
+        run: dotnet test
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run frontend unit tests
+        run: npm run test:ci
