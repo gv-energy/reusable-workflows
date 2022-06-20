@@ -2,10 +2,6 @@ name: Test web
 
 on:
   workflow_call:
-    inputs:
-      WEB_FOLDER:
-        required: true
-        type: string
     secrets:
       PRIVATE_NUGET_USERNAME:
         required: true
@@ -42,8 +38,8 @@ jobs:
           node-version: '16.x'
           cache: 'npm'
       - name: Install dependencies
-        working-directory: ${{ inputs.WEB_FOLDER }}/ClientApp
+        working-directory: ./src/${{ secrets.SERVICE_NAME }}.Web/ClientApp
         run: npm ci
       - name: Run frontend unit tests
-        working-directory: ${{ inputs.WEB_FOLDER }}/ClientApp
+        working-directory: ./src/${{ secrets.SERVICE_NAME }}.Web/ClientApp
         run: npm run test:ci
