@@ -1,0 +1,40 @@
+name: Publish library
+
+on:
+  workflow_call:
+    inputs:
+      NUGET_SOURCE:
+        required: true
+        type: string
+    secrets:
+      PRIVATE_NUGET_USERNAME:
+        required: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:  
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Setup .NET 6.x
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '6.x'
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: '5.x'
+      - name: Determine Version
+        uses: gittools/actions/gitversion/execute@v0.9.7
+      - name: Set package version
+        run: echo PACKAGE_VERSION="$GITVERSION_NUGETVERSIONV2"-"$GITVERSION_COMMITSSINCEVERSIONSOURCE" >> $GITHUB_ENV
+        if: github.event_name == 'pull_request'
+      - name: Set package version
+        run: echo PACKAGE_VERSION="$GITVERSION_NUGETVERSIONV2" >> $GITHUB_ENV
+        if: github.event_name != 'pull_request'
+      - name: Echo package version
+        run: echo ${{ env.PACKAGE_VERSION }}
+      - name: Pack libraries
+        run: dotnet pack -c release -p:PackageVersion=${{ env.PACKAGE_VERSION }} --output nuget-packages
+      - name: Publish 
+        run: dotnet nuget push "nuget-packages/*.nupkg" --api-key "${{ secrets.PRIVATE_NUGET_PAT }}" --source "${{ inputs.NUGET_SOURCE }}"
