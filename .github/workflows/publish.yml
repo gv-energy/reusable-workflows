@@ -63,7 +63,7 @@ jobs:
 
       - name: Set image prefix tag
         if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
-        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/heads/##g')" >> $GITHUB_ENV
+        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/heads/##g' | sed -r 's/[/]+/_/g')" >> $GITHUB_ENV
 
       - name: Set image prefix tag
         if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
