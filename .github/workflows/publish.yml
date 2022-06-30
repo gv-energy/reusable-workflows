@@ -52,6 +52,9 @@ jobs:
         run: echo ${{ env.TAG_PREFIX }}
       - name: Set image tag
         run: echo TAG="${TAG_PREFIX::100}"-$(date +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+      - name: Set image tag
+        run: echo TAG="release-${TAG_PREFIX::100}" >> $GITHUB_ENV
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
       - name: Echo image tag
         run: echo ${{ env.TAG }}
       - name: Set up Docker Buildx
