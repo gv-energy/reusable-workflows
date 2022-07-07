@@ -104,7 +104,7 @@ jobs:
         with:
           context: ./src
           push: true
-          tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }}
+          tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest
           build-args: |
             COMPONENT=${{ inputs.COMPONENT }}
             SERVICE_NAME=${{ secrets.SERVICE_NAME }}
