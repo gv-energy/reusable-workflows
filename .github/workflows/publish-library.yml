@@ -12,6 +12,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      PRIVATE_NUGET_USERNAME: ${{ secrets.PRIVATE_NUGET_USERNAME }}
+      PRIVATE_NUGET_PAT: ${{ secrets.PRIVATE_NUGET_PAT }}
     defaults:
       run:
         working-directory: ./src
