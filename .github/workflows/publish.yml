@@ -29,12 +29,18 @@ on:
         required: false
       RUDDERSTACK_DATA_URL:
         required: false
+      RUDDERSTACK_PROD_WRITE_KEY:
+        required: false
+      RUDDERSTACK_PROD_DATA_URL:
+        required: false
 jobs:
   publish:
     runs-on: ubuntu-latest
     env:
       RUDDERSTACK_WRITE_KEY: ${{ secrets.RUDDERSTACK_WRITE_KEY }}
       RUDDERSTACK_DATA_URL: ${{ secrets.RUDDERSTACK_DATA_URL }}
+      RUDDERSTACK_PROD_WRITE_KEY: ${{ secrets.RUDDERSTACK_PROD_WRITE_KEY }}
+      RUDDERSTACK_PROD_DATA_URL: ${{ secrets.RUDDERSTACK_PROD_DATA_URL }}
     defaults:
       run:
         working-directory: ./src
@@ -89,13 +95,22 @@ jobs:
         run: echo ${{ env.TAG }}
 
       - name: Override rudderstack variables
-        if: ${{ env.RUDDERSTACK_WRITE_KEY }} && ${{ env.RUDDERSTACK_DATA_URL }} && ${{ inputs.COMPONENT == 'Web' }}
+        if: ${{ env.RUDDERSTACK_WRITE_KEY }} && ${{ env.RUDDERSTACK_DATA_URL }} && ${{ inputs.COMPONENT == 'Web' }} && (startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request'
         uses: microsoft/variable-substitution@v1
         with:
           files: "**/*/environment.json"
         env:
           rudderstackWriteKey: ${{ secrets.RUDDERSTACK_WRITE_KEY }}
           rudderstackDataPlaneUrl: ${{ secrets.RUDDERSTACK_DATA_URL }}
+
+      - name: Override rudderstack variables
+        if: ${{ env.RUDDERSTACK_PROD_WRITE_KEY }} && ${{ env.RUDDERSTACK_PROD_DATA_URL }} && ${{ inputs.COMPONENT == 'Web' }} && (startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request'
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: "**/*/environment.json"
+        env:
+          rudderstackWriteKey: ${{ secrets.RUDDERSTACK_PROD_WRITE_KEY }}
+          rudderstackDataPlaneUrl: ${{ secrets.RUDDERSTACK_PROD_DATA_URL }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
