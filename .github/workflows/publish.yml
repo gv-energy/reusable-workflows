@@ -85,7 +85,12 @@ jobs:
         run: echo ${{ env.TAG_PREFIX }}
 
       - name: Set image tag
-        run: echo TAG="${TAG_PREFIX::100}"-$(date +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+        if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.head_commit.timestamp }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+        
+      - name: Set image tag
+        if: github.event_name == 'pull_request'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.pull_request.updated_at }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Set image tag
         if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
