@@ -163,13 +163,13 @@ jobs:
             PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
             PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
 
-      - name: Build and push prod
+      - name: Build and push prod and nonprod
         if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
         uses: docker/build-push-action@v3
         with:
           context: ./src
           push: true
-          tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest
+          tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest,${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest
           build-args: |
             COMPONENT=${{ inputs.COMPONENT }}
             SERVICE_NAME=${{ secrets.SERVICE_NAME }}
