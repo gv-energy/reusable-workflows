@@ -33,6 +33,14 @@ on:
         required: false
       RUDDERSTACK_PROD_DATA_URL:
         required: false
+      CUSTOMER_IO_SITE_ID:
+        required: false
+      CUSTOMER_IO_ORGANISATION_ID:
+        required: false
+      CUSTOMER_IO_PROD_SITE_ID:
+        required: false
+      CUSTOMER_IO_PROD_ORGANISATION_ID:
+        required: false
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -41,6 +49,10 @@ jobs:
       RUDDERSTACK_DATA_URL: ${{ secrets.RUDDERSTACK_DATA_URL }}
       RUDDERSTACK_PROD_WRITE_KEY: ${{ secrets.RUDDERSTACK_PROD_WRITE_KEY }}
       RUDDERSTACK_PROD_DATA_URL: ${{ secrets.RUDDERSTACK_PROD_DATA_URL }}
+      CUSTOMER_IO_SITE_ID: ${{ secrets.CUSTOMER_IO_SITE_ID }}
+      CUSTOMER_IO_ORGANISATION_ID: ${{ secrets.CUSTOMER_IO_ORGANISATION_ID }}
+      CUSTOMER_IO_PROD_SITE_ID: ${{ secrets.CUSTOMER_IO_PROD_SITE_ID }}
+      CUSTOMER_IO_PROD_ORGANISATION_ID: ${{ secrets.CUSTOMER_IO_PROD_ORGANISATION_ID }}
     defaults:
       run:
         working-directory: ./src
