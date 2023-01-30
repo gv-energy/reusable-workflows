@@ -1,0 +1,158 @@
+name: Publish
+
+on:
+  workflow_call:
+    inputs:
+      COMPONENT:
+        required: true
+        type: string
+    secrets:
+      SERVICE_NAME:
+        required: true
+      PRIVATE_NUGET_USERNAME:
+        required: true
+      PRIVATE_NUGET_PAT:
+        required: true
+      ACR_SERVER:
+        required: true
+      ACR_USERNAME:
+        required: true
+      ACR_PASSWORD:
+        required: true
+      ACR_PROD_SERVER:
+        required: true
+      ACR_PROD_USERNAME:
+        required: true
+      ACR_PROD_PASSWORD:
+        required: true
+      RUDDERSTACK_WRITE_KEY:
+        required: false
+      RUDDERSTACK_DATA_URL:
+        required: false
+      RUDDERSTACK_PROD_WRITE_KEY:
+        required: false
+      RUDDERSTACK_PROD_DATA_URL:
+        required: false
+      CUSTOMER_IO_SITE_ID:
+        required: false
+      CUSTOMER_IO_ORGANISATION_ID:
+        required: false
+      CUSTOMER_IO_PROD_SITE_ID:
+        required: false
+      CUSTOMER_IO_PROD_ORGANISATION_ID:
+        required: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      RUDDERSTACK_WRITE_KEY: ${{ secrets.RUDDERSTACK_WRITE_KEY }}
+      RUDDERSTACK_DATA_URL: ${{ secrets.RUDDERSTACK_DATA_URL }}
+      RUDDERSTACK_PROD_WRITE_KEY: ${{ secrets.RUDDERSTACK_PROD_WRITE_KEY }}
+      RUDDERSTACK_PROD_DATA_URL: ${{ secrets.RUDDERSTACK_PROD_DATA_URL }}
+      CUSTOMER_IO_SITE_ID: ${{ secrets.CUSTOMER_IO_SITE_ID }}
+      CUSTOMER_IO_ORGANISATION_ID: ${{ secrets.CUSTOMER_IO_ORGANISATION_ID }}
+      CUSTOMER_IO_PROD_SITE_ID: ${{ secrets.CUSTOMER_IO_PROD_SITE_ID }}
+      CUSTOMER_IO_PROD_ORGANISATION_ID: ${{ secrets.CUSTOMER_IO_PROD_ORGANISATION_ID }}
+    defaults:
+      run:
+        working-directory: ./src
+    steps:
+
+      - name: Login to ACR Non prod
+        if: (startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.ACR_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Login to ACR prod
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.ACR_PROD_SERVER }}
+          username: ${{ secrets.ACR_PROD_USERNAME }}
+          password: ${{ secrets.ACR_PROD_PASSWORD }}
+
+      - name: set project name
+        id: project-name
+        uses: ASzc/change-string-case-action@v5
+        with:
+          string: ${{ secrets.SERVICE_NAME }}.${{ inputs.COMPONENT }}
+
+      - name: Set image prefix tag
+        if: github.event_name == 'pull_request'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_HEAD_REF##*/,,} | sed -r 's/[/]+/_/g')" >> $GITHUB_ENV
+
+      - name: Set image prefix tag
+        if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/heads/##g' | sed -r 's/[/]+/_/g')" >> $GITHUB_ENV
+
+      - name: Set image prefix tag
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/tags/##g')" >> $GITHUB_ENV
+
+      - name: Echo image prefix tag
+        run: echo ${{ env.TAG_PREFIX }}
+
+      - name: Set image tag
+        if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.head_commit.timestamp }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+        
+      - name: Set image tag
+        if: github.event_name == 'pull_request'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.pull_request.updated_at }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set image tag
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        run: echo TAG="release-${TAG_PREFIX::100}" >> $GITHUB_ENV
+
+      - name: Echo image tag
+        run: echo ${{ env.TAG }}
+
+      - name: Override rudderstack variables non prod
+        if: ${{ env.RUDDERSTACK_WRITE_KEY != 0 &&  env.RUDDERSTACK_DATA_URL != 0 && inputs.COMPONENT == 'Web' && ((startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request') }}
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: "**/*/environment.json"
+        env:
+          rudderstackWriteKey: ${{ secrets.RUDDERSTACK_WRITE_KEY }}
+          rudderstackDataPlaneUrl: ${{ secrets.RUDDERSTACK_DATA_URL }}
+
+      - name: Override rudderstack variables prod
+        if: ${{ env.RUDDERSTACK_PROD_WRITE_KEY != 0 && env.RUDDERSTACK_PROD_DATA_URL != 0 && inputs.COMPONENT == 'Web' && startsWith(github.ref, 'refs/tags') && github.event_name == 'push' }}
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: "**/*/environment.json"
+        env:
+          rudderstackWriteKey: ${{ secrets.RUDDERSTACK_PROD_WRITE_KEY }}
+          rudderstackDataPlaneUrl: ${{ secrets.RUDDERSTACK_PROD_DATA_URL }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2.2.1
+
+      - name: Build and push nonprod
+        if: (startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request'
+        uses: docker/build-push-action@v3
+        with:
+          context: ./src
+          push: true
+          tags: ${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }}
+          build-args: |
+            COMPONENT=${{ inputs.COMPONENT }}
+            SERVICE_NAME=${{ secrets.SERVICE_NAME }}
+            PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
+            PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
+
+      - name: Build and push prod
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        uses: docker/build-push-action@v3
+        with:
+          context: ./src
+          push: true
+          tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest
+          build-args: |
+            COMPONENT=${{ inputs.COMPONENT }}
+            SERVICE_NAME=${{ secrets.SERVICE_NAME }}
+            PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
+            PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
