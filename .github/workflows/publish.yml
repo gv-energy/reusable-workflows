@@ -45,6 +45,8 @@ on:
         required: false
       ONE_TRUST_PROD_ID:
         required: false
+      GOOGLE_MAP_API_KEY:
+        required: false
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -59,6 +61,7 @@ jobs:
       CUSTOMER_IO_PROD_ORGANISATION_ID: ${{ secrets.CUSTOMER_IO_PROD_ORGANISATION_ID }}
       ONE_TRUST_TEST_ID: ${{ secrets.ONE_TRUST_TEST_ID }}
       ONE_TRUST_PROD_ID: ${{ secrets.ONE_TRUST_PROD_ID }}
+      GOOGLE_MAP_API_KEY: ${{ secrets.GOOGLE_MAP_API_KEY }}
     defaults:
       run:
         working-directory: ./src
@@ -115,6 +118,14 @@ jobs:
 
       - name: Echo image tag
         run: echo ${{ env.TAG }}
+
+      - name: Override google map api key
+        if: ${{ env.GOOGLE_MAP_API_KEY != 0 && inputs.COMPONENT == 'Web' }}
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: "**/*/environment.json"
+        env:
+          googleMapApiKey: ${{ secrets.GOOGLE_MAP_API_KEY }}
 
       - name: Override rudderstack variables non prod
         if: ${{ env.RUDDERSTACK_WRITE_KEY != 0 &&  env.RUDDERSTACK_DATA_URL != 0 && inputs.COMPONENT == 'Web' && ((startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request') }}
