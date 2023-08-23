@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       CONTEXT:
-        required: true
+        required: false
         description: 'Allows to overwrite the context of the docker build'
         type: string
         default: './src'
