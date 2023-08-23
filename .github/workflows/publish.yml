@@ -6,6 +6,11 @@ on:
       COMPONENT:
         required: true
         type: string
+      CONTEXT:
+        required: true
+        description: 'Allows to overwrite the context of the docker build'
+        type: string
+        default: './src'
     secrets:
       SERVICE_NAME:
         required: true
@@ -64,7 +69,7 @@ jobs:
       GOOGLE_MAP_API_KEY: ${{ secrets.GOOGLE_MAP_API_KEY }}
     defaults:
       run:
-        working-directory: ./src
+        working-directory: ${{ inputs.CONTEXT }}
     steps:
       - uses: actions/checkout@v3
 
@@ -186,7 +191,7 @@ jobs:
         if: (startsWith(github.ref, 'refs/heads') && github.event_name == 'push') || github.event_name == 'pull_request'
         uses: docker/build-push-action@v3
         with:
-          context: ./src
+          context: ${{ inputs.CONTEXT }}
           push: true
           tags: ${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }}
           build-args: |
@@ -199,7 +204,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
         uses: docker/build-push-action@v3
         with:
-          context: ./src
+          context: ${{ inputs.CONTEXT }}
           push: true
           tags: ${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_PROD_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest,${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:${{ env.TAG }},${{ secrets.ACR_SERVER }}/${{ steps.project-name.outputs.lowercase }}:latest
           build-args: |
