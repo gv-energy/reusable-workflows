@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup .NET 6.x
         if: ${{ env.USE_DOTNET_7 == 'false'  }}
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '6.x'
       - name: Setup .NET 7.x
