@@ -30,10 +30,10 @@ jobs:
       - name: Determine Version
         uses: gittools/actions/gitversion/execute@v3.0.3
       - name: Set package version
-        run: echo PACKAGE_VERSION="$GITVERSION_NUGETVERSIONV2"-"$GITVERSION_COMMITSSINCEVERSIONSOURCE" >> $GITHUB_ENV
+        run: echo PACKAGE_VERSION="$GitVersion_NuGetVersionV2"-"$GitVersion_CommitsSinceVersionSource" >> $GITHUB_ENV
         if: github.event_name == 'pull_request'
       - name: Set package version
-        run: echo PACKAGE_VERSION="$GITVERSION_NUGETVERSIONV2" >> $GITHUB_ENV
+        run: echo PACKAGE_VERSION="$GitVersion_NuGetVersionV2" >> $GITHUB_ENV
         if: github.event_name != 'pull_request'
       - name: Echo package version
         run: echo ${{ env.PACKAGE_VERSION }}
