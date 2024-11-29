@@ -24,18 +24,22 @@ jobs:
       run:
         working-directory: ./src
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.2.2
       - name: Setup .NET 6.x
         if: ${{ env.USE_DOTNET_7 == 'false'  }}
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4.1.0
         with:
           dotnet-version: '6.x'
       - name: Setup .NET 7.x
         if: ${{ env.USE_DOTNET_7 == 'true' }}
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4.1.0
         with:
           dotnet-version: '7.x'
-      - uses: actions/cache@v3
+      - name: Setup .NET 8.x
+        uses: actions/setup-dotnet@v4.1.0
+        with:
+          dotnet-version: '8.x'
+      - uses: actions/cache@v4.1.2
         with:
           path: ~/.nuget/packages
           # Look to see if there is a cache hit for the corresponding requirements file
@@ -55,15 +59,15 @@ jobs:
       run:
         working-directory: ${{ env.FRONTEND_FOLDER }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.2.2
       - name: Echo frontend folder
         run: echo ${{ env.FRONTEND_FOLDER }}
       - name: ls frontend folder
         run: ls
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4.1.0
         with:
-          node-version: '16.x'
+          node-version: '22.x'
           cache: 'npm'
           cache-dependency-path: ${{ env.FRONTEND_FOLDER }}/package-lock.json
       - name: Install dependencies
