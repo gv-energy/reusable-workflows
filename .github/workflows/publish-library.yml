@@ -18,15 +18,15 @@ jobs:
     defaults:
       run:
         working-directory: ./src
-    steps:  
+    steps:
       - uses: actions/checkout@v4.2.2
         with:
-          fetch-depth: '0' 
-      - uses: actions/setup-dotnet@v4.1.0
+          fetch-depth: "0"
+      - uses: actions/setup-dotnet@v4.3.1
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3.0.3  
+        uses: gittools/actions/gitversion/setup@v3.0.3
         with:
-          versionSpec: '5.x'
+          versionSpec: "5.x"
       - name: Determine Version
         uses: gittools/actions/gitversion/execute@v3.0.3
       - name: Set package version
@@ -39,5 +39,5 @@ jobs:
         run: echo ${{ env.PACKAGE_VERSION }}
       - name: Pack libraries
         run: dotnet pack -c release -p:PackageVersion=${{ env.PACKAGE_VERSION }}  --property:PackageOutputPath=../nuget-packages
-      - name: Publish 
+      - name: Publish
         run: dotnet nuget push "nuget-packages/*.nupkg" --api-key "${{ secrets.PRIVATE_NUGET_PAT }}" --source "${{ inputs.NUGET_SOURCE }}"
