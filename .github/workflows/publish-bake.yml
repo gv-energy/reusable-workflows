@@ -1,0 +1,119 @@
+name: Publish (bake)
+
+# Builds every deployable component of a service in a single BuildKit graph, so the
+# shared restore and build stages run once instead of once per component. Tagging is
+# identical to publish.yml; only the number of builds differs.
+
+on:
+  workflow_call:
+    inputs:
+      COMPONENTS:
+        required: false
+        description: 'Space-separated components to build. Each needs a matching bake target.'
+        type: string
+        default: 'Api Worker Migrator'
+      CONTEXT:
+        required: false
+        description: 'Allows to overwrite the context of the docker build'
+        type: string
+        default: './src'
+    secrets:
+      SERVICE_NAME:
+        required: true
+      PRIVATE_NUGET_USERNAME:
+        required: true
+      PRIVATE_NUGET_PAT:
+        required: true
+      ACR_SERVER:
+        required: true
+      ACR_USERNAME:
+        required: true
+      ACR_PASSWORD:
+        required: true
+      ACR_PROD_SERVER:
+        required: true
+      ACR_PROD_USERNAME:
+        required: true
+      ACR_PROD_PASSWORD:
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.CONTEXT }}
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Login to ACR Non prod
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ secrets.ACR_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Login to ACR prod
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        uses: docker/login-action@v3.3.0
+        with:
+          registry: ${{ secrets.ACR_PROD_SERVER }}
+          username: ${{ secrets.ACR_PROD_USERNAME }}
+          password: ${{ secrets.ACR_PROD_PASSWORD }}
+
+      - name: Set image prefix tag
+        if: github.event_name == 'pull_request'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_HEAD_REF##*/,,} | sed -r 's/[/]+/_/g')" >> $GITHUB_ENV
+
+      - name: Set image prefix tag
+        if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/heads/##g' | sed -r 's/[/]+/_/g')" >> $GITHUB_ENV
+
+      - name: Set image prefix tag
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        run: echo TAG_PREFIX="$(echo ${GITHUB_REF,,} | sed -e 's#refs/tags/##g')" >> $GITHUB_ENV
+
+      - name: Set image tag
+        if: startsWith(github.ref, 'refs/heads') && github.event_name == 'push'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.head_commit.timestamp }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set image tag
+        if: github.event_name == 'pull_request'
+        run: echo TAG="${TAG_PREFIX::100}"-$(date -d '${{ github.event.pull_request.updated_at }}' +'%s')-"${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Set image tag
+        if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
+        run: echo TAG="release-${TAG_PREFIX::100}" >> $GITHUB_ENV
+
+      - name: Echo image tag
+        run: echo ${{ env.TAG }}
+
+      - name: Compose the tag list for every component
+        env:
+          COMPONENTS: ${{ inputs.COMPONENTS }}
+          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+          ACR_SERVER: ${{ secrets.ACR_SERVER }}
+          ACR_PROD_SERVER: ${{ secrets.ACR_PROD_SERVER }}
+          IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags') && github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          for component in $COMPONENTS; do
+            image=$(echo "${SERVICE_NAME}.${component}" | tr '[:upper:]' '[:lower:]')
+            key=$(echo "$component" | tr '[:lower:]' '[:upper:]')
+            if [ "$IS_RELEASE" = "true" ]; then
+              tags="${ACR_PROD_SERVER}/${image}:${TAG},${ACR_PROD_SERVER}/${image}:latest,${ACR_SERVER}/${image}:${TAG},${ACR_SERVER}/${image}:latest"
+            else
+              tags="${ACR_SERVER}/${image}:${TAG}"
+            fi
+            echo "TAGS_${key}=${tags}" >> "$GITHUB_ENV"
+          done
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.7.1
+
+      - name: Bake and push
+        env:
+          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+          PRIVATE_NUGET_USERNAME: ${{ secrets.PRIVATE_NUGET_USERNAME }}
+          PRIVATE_NUGET_PAT: ${{ secrets.PRIVATE_NUGET_PAT }}
+        run: docker buildx bake --push
