@@ -165,19 +165,3 @@ jobs:
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: docker buildx bake --push
 
-      - name: Report image sizes
-        env:
-          COMPONENTS: ${{ inputs.COMPONENTS }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
-          ACR_SERVER: ${{ secrets.ACR_SERVER }}
-        run: |
-          set -uo pipefail
-          for component in $COMPONENTS; do
-            image=$(echo "${SERVICE_NAME}.${component}" | tr '[:upper:]' '[:lower:]')
-            key=$(echo "$component" | tr '[:lower:]' '[:upper:]')
-            eval "tags=\$TAGS_${key}"
-            ref=${tags%%,*}
-            size=$(docker buildx imagetools inspect "$ref" --raw | jq '[.layers[].size] | add')
-            layers=$(docker buildx imagetools inspect "$ref" --raw | jq '.layers | length')
-            echo "$component: $(numfmt --to=iec $size) compressed across $layers layers"
-          done
