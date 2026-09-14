@@ -15,7 +15,9 @@ on:
     inputs:
       COMPONENTS:
         required: false
-        description: 'Space-separated components to build. Each needs a matching bake target.'
+        description: >-
+          Space-separated components to build. Each needs a bake target named after it in
+          lowercase, so "Api Worker" requires the targets "api" and "worker".
         type: string
         default: 'Api Worker Migrator'
       CONTEXT:
@@ -163,8 +165,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.7.1
 
+      # Bake the targets named by COMPONENTS rather than the HCL's default group, which
+      # would build every target regardless of what this run published into out/.
       - name: Bake and push
         env:
+          COMPONENTS: ${{ inputs.COMPONENTS }}
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
-        run: docker buildx bake --push
+        run: docker buildx bake --push $(echo "$COMPONENTS" | tr '[:upper:]' '[:lower:]')
 
