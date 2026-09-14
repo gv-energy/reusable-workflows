@@ -199,6 +199,8 @@ jobs:
             SERVICE_NAME=${{ secrets.SERVICE_NAME }}
             PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
             PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
+          cache-from: type=gha,scope=${{ inputs.COMPONENT }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.COMPONENT }}
 
       - name: Build and push prod and nonprod
         if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
@@ -212,3 +214,5 @@ jobs:
             SERVICE_NAME=${{ secrets.SERVICE_NAME }}
             PRIVATE_NUGET_USERNAME=${{ secrets.PRIVATE_NUGET_USERNAME }}
             PRIVATE_NUGET_PAT=${{ secrets.PRIVATE_NUGET_PAT }}
+          cache-from: type=gha,scope=${{ inputs.COMPONENT }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.COMPONENT }}
