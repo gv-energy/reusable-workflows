@@ -28,11 +28,6 @@ on:
         description: 'Newline-separated SDK versions to install.'
         type: string
         default: '9.x'
-      TEST_PROJECT_GLOB:
-        required: false
-        description: 'Glob matching the test project directories, run concurrently.'
-        type: string
-        default: '*Tests'
     secrets:
       SERVICE_NAME:
         required: true
@@ -83,29 +78,12 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
 
+      # Tried running the projects concurrently: on a 4-core runner every assembly
+      # slowed ~3x from CPU contention (122s -> 115s overall, i.e. noise) and a
+      # timing-sensitive MassTransit saga test began failing. xunit already
+      # parallelises inside each assembly, so the runner is saturated as it is.
       - name: Run unit tests
-        env:
-          TEST_PROJECT_GLOB: ${{ inputs.TEST_PROJECT_GLOB }}
-        run: |
-          set -uo pipefail
-          pids=""
-          projects=$(ls -d $TEST_PROJECT_GLOB)
-          for project in $projects; do
-            dotnet test "$project/$project.csproj" -c Release --no-build --nologo > "/tmp/$project.log" 2>&1 &
-            pids="$pids $!:$project"
-          done
-          failed=0
-          for entry in $pids; do
-            pid=${entry%%:*}
-            if ! wait "$pid"; then failed=1; fi
-          done
-          for project in $projects; do
-            echo "::group::$project"
-            cat "/tmp/$project.log"
-            echo "::endgroup::"
-          done
-          exit $failed
-
+        run: dotnet test -c Release --no-build
       - name: Publish every component from that build
         env:
           COMPONENTS: ${{ inputs.COMPONENTS }}
