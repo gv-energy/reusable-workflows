@@ -142,7 +142,13 @@ jobs:
       - name: Echo image tag
         run: echo ${{ env.TAG }}
 
-      - name: Compose the tag list for every component
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.7.1
+
+      # COMPONENTS drives the bake targets (the HCL generates them from it), and each
+      # target's tags are applied with --set. Repeating --set for one field appends, which
+      # a single comma-separated value does not - that would push one malformed tag.
+      - name: Bake and push
         env:
           COMPONENTS: ${{ inputs.COMPONENTS }}
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
@@ -151,25 +157,22 @@ jobs:
           IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags') && github.event_name == 'push' }}
         run: |
           set -euo pipefail
+          targets=()
+          overrides=()
           for component in $COMPONENTS; do
             image=$(echo "${SERVICE_NAME}.${component}" | tr '[:upper:]' '[:lower:]')
-            key=$(echo "$component" | tr '[:lower:]' '[:upper:]')
+            target=$(echo "$component" | tr '[:upper:]' '[:lower:]')
+            targets+=("$target")
             if [ "$IS_RELEASE" = "true" ]; then
-              tags="${ACR_PROD_SERVER}/${image}:${TAG},${ACR_PROD_SERVER}/${image}:latest,${ACR_SERVER}/${image}:${TAG},${ACR_SERVER}/${image}:latest"
+              refs="${ACR_PROD_SERVER}/${image}:${TAG} ${ACR_PROD_SERVER}/${image}:latest"
+              refs="$refs ${ACR_SERVER}/${image}:${TAG} ${ACR_SERVER}/${image}:latest"
             else
-              tags="${ACR_SERVER}/${image}:${TAG}"
+              refs="${ACR_SERVER}/${image}:${TAG}"
             fi
-            echo "TAGS_${key}=${tags}" >> "$GITHUB_ENV"
+            for ref in $refs; do
+              overrides+=(--set "${target}.tags=${ref}")
+            done
           done
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.7.1
-
-      # Bake the targets named by COMPONENTS rather than the HCL's default group, which
-      # would build every target regardless of what this run published into out/.
-      - name: Bake and push
-        env:
-          COMPONENTS: ${{ inputs.COMPONENTS }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
-        run: docker buildx bake --push $(echo "$COMPONENTS" | tr '[:upper:]' '[:lower:]')
-
+          echo "Baking: ${targets[*]}"
+          COMPONENTS=$(echo "$COMPONENTS" | tr ' ' ',') \
+            docker buildx bake --push "${targets[@]}" "${overrides[@]}"
