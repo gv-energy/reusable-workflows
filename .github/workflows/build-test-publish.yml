@@ -75,8 +75,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      # UseAppHost=false drops the native launcher executable. It is never run - the
+      # entrypoint goes through the dotnet muxer - and the SDK emits it for the build
+      # platform, so a runner-built launcher is a glibc binary inside a musl image.
       - name: Build
-        run: dotnet build -c Release --no-restore
+        run: dotnet build -c Release --no-restore -p:UseAppHost=false
 
       # Tried running the projects concurrently: on a 4-core runner every assembly
       # slowed ~3x from CPU contention (122s -> 115s overall, i.e. noise) and a
@@ -92,7 +95,7 @@ jobs:
           set -euo pipefail
           for component in $COMPONENTS; do
             dotnet publish "${SERVICE_NAME}.${component}/${SERVICE_NAME}.${component}.csproj" \
-              -c Release --no-build -o "out/${component}"
+              -c Release --no-build -p:UseAppHost=false -o "out/${component}"
           done
 
       - name: Login to ACR Non prod
