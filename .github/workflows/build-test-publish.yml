@@ -62,6 +62,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
+      # Started before the tests: since the runner moved to the containerd image store,
+      # the Testcontainers teardown after `dotnet test` can garbage-collect the buildkit
+      # image while this step is still pulling it ("lease does not exist", "failed to Lchown").
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.7.1
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4.3.1
         with:
@@ -141,9 +147,6 @@ jobs:
 
       - name: Echo image tag
         run: echo ${{ env.TAG }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.7.1
 
       # COMPONENTS drives the bake targets (the HCL generates them from it), and each
       # target's tags are applied with --set. Repeating --set for one field appends, which
