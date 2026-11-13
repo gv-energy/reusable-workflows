@@ -23,10 +23,33 @@ jobs:
         with:
           fetch-depth: "0"
       - uses: actions/setup-dotnet@v4
+        id: setup-dotnet
         with:
           dotnet-version: |
             8.x
             9.x
+      - name: Pin the .NET SDK
+        env:
+          SDK_VERSION: ${{ steps.setup-dotnet.outputs.dotnet-version }}
+        run: |
+          dir="$PWD"
+          while true; do
+            if [ -f "$dir/global.json" ]; then
+              echo "Keeping $dir/global.json"
+              exit 0
+            fi
+            if [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = "/" ]; then
+              break
+            fi
+            dir=$(dirname "$dir")
+          done
+          if [ -z "$SDK_VERSION" ]; then
+            echo "::error::setup-dotnet reported no SDK version to pin"
+            exit 1
+          fi
+          printf '{\n  "sdk": {\n    "version": "%s",\n    "rollForward": "latestFeature"\n  }\n}\n' "$SDK_VERSION" > global.json
+          echo "Pinned the .NET SDK to $SDK_VERSION (rollForward latestFeature)"
+          dotnet --version
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.0.3
         with:
