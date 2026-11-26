@@ -7,6 +7,11 @@ on:
         required: false
         default: false
         type: boolean
+      DOTNET_VERSIONS:
+        description: 'Newline-separated SDK versions to install. When set, replaces the legacy 6/7/8/9 install steps.'
+        required: false
+        default: ''
+        type: string
       RUN_E2E:
         description: "Also run the frontend Playwright e2e suite (npm run e2e) after the unit tests"
         required: false
@@ -25,33 +30,42 @@ jobs:
       PRIVATE_NUGET_USERNAME: ${{ secrets.PRIVATE_NUGET_USERNAME }}
       PRIVATE_NUGET_PAT: ${{ secrets.PRIVATE_NUGET_PAT }}
       USE_DOTNET_7: ${{ inputs.USE_DOTNET_7 }}
+      DOTNET_VERSIONS: ${{ inputs.DOTNET_VERSIONS }}
     defaults:
       run:
         working-directory: ./src
     steps:
       - uses: actions/checkout@v4.2.2
+      - name: Setup .NET (explicit versions)
+        if: ${{ env.DOTNET_VERSIONS != '' }}
+        id: setup-dotnet
+        uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: ${{ inputs.DOTNET_VERSIONS }}
       - name: Setup .NET 6.x
-        if: ${{ env.USE_DOTNET_7 == 'false'  }}
+        if: ${{ env.DOTNET_VERSIONS == '' && env.USE_DOTNET_7 == 'false'  }}
         uses: actions/setup-dotnet@v4.1.0
         with:
           dotnet-version: "6.x"
       - name: Setup .NET 7.x
-        if: ${{ env.USE_DOTNET_7 == 'true' }}
+        if: ${{ env.DOTNET_VERSIONS == '' && env.USE_DOTNET_7 == 'true' }}
         uses: actions/setup-dotnet@v4.1.0
         with:
           dotnet-version: "7.x"
       - name: Setup .NET 8.x
+        if: ${{ env.DOTNET_VERSIONS == '' }}
         uses: actions/setup-dotnet@v4.1.0
         with:
           dotnet-version: "8.x"
       - name: Setup .NET 9.x
-        id: setup-dotnet
+        if: ${{ env.DOTNET_VERSIONS == '' }}
+        id: setup-dotnet-9
         uses: actions/setup-dotnet@v4.3.1
         with:
           dotnet-version: "9.x"
       - name: Pin the .NET SDK
         env:
-          SDK_VERSION: ${{ steps.setup-dotnet.outputs.dotnet-version }}
+          SDK_VERSION: ${{ steps.setup-dotnet.outputs.dotnet-version || steps.setup-dotnet-9.outputs.dotnet-version }}
         run: |
           dir="$PWD"
           while true; do
